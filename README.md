@@ -160,4 +160,4 @@ Please read the [Community](https://quollix.org/docs/community/) articles for in
 
 ### License
 
-This project is licensed under the [MIT License](https://opensource.org/license/mit). See [LICENSE](LICENSE) for details.
+This project is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). See [LICENSE](LICENSE) for details.
