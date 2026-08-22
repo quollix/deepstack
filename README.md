@@ -156,7 +156,7 @@ Log handlers can be registered via `NewDeepStackLogger()` to write logs to conso
 
 ### Contributing
 
-Please read the [Community](https://quollix.org/docs/community/) articles for information on how to contribute to the project.
+Please read the [Community](https://quollix.org/docs/project/community/) articles for more information on how to contribute to the project and interact with others.
 
 ### License
 
