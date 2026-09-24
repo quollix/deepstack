@@ -1,6 +1,6 @@
 module github.com/quollix/deepstack
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/brunoga/deep v1.2.4 // indirect
