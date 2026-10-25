@@ -10,9 +10,9 @@ Here is the DeepStack error data structure:
 
 ```go
 type DeepStackError struct {
-    message      string
-    stackTrace   string
-    context      map[string]interface{}
+    Message    string
+    StackTrace string
+    Context    map[string]any
 }
 ```
 
@@ -24,16 +24,23 @@ type DeepStackError struct {
 ### Logging Design
 
 * **Structured Logging** is the general use case of the DeepStack library that allows for easy filtering and searching of logs.
-* **Error Logging** is a special case in which the DeepStack logger reflects on the error type. If it is a DeepStack error, the library prints all of this information to the console and the log file in a readable manner.
+* **Error Logging** is a special case in which the logger recognizes `*DeepStackError` values and includes their context and stack trace in the log record. The handlers passed to `NewDeepStackLogger` determine the output format and destination.
 
 ## Usage Overview
 
 ### Basic Structured Logging
 
-```
+```go
+package main
+
+import (
+    "log/slog"
+
+    "github.com/quollix/deepstack"
+)
+
 func main() {
-    logger := deepstack.NewDeepStackLogger(NewRawConsoleHandler(slog.LevelInfo))
-    // The design of the usage aimed for minimal overhead and simplicity, ideally with one-liners.
+    logger := deepstack.NewDeepStackLogger(deepstack.NewRawConsoleHandler(slog.LevelInfo))
     logger.Info("user logged in", "name", "john", "age", 23)
 }
 ```
@@ -51,8 +58,8 @@ Use a simple **create → propagate → handle** lifecycle with DeepStack. Stack
 #### 1) Error creation
 
 Create a DeepStack error at the first failure point so the stack trace points to the origin.
-- New failure: `deepstack.NewError("resource not found")`
-- From a Go error: `deepstack.NewError(err.Error())`
+- New failure: `logger.NewError("resource not found")`
+- From a Go error: `logger.NewError(err.Error())`
 
 #### 2) Error propagation
 
@@ -60,7 +67,7 @@ Return the error upward. Intermediate layers **do not log**, but they may enrich
 
 #### 3) Error handling
 
-Log the error at the boundary, by passing the error via `deepstack.ErrorField` to the logger. If a non-DeepStack error is logged this way, the logger emits a warning to help you find places where wrapping to DeepStack errors was missed.
+Log the error at the boundary by passing it directly to a log method, for example `logger.Error(err)`. A `*DeepStackError` is logged with its context and stack trace. Other Go errors are logged using their `Error()` text. Use `logger.NewError(err.Error())` when you need to capture a DeepStack stack trace at the wrapping point.
 
 #### Context
 
@@ -78,7 +85,7 @@ import (
     "github.com/quollix/deepstack"
 )
 
-var logger = deepstack.NewDeepStackLogger(slog.LevelInfo)
+var logger = deepstack.NewDeepStackLogger(deepstack.NewRawConsoleHandler(slog.LevelInfo))
 
 const (
     // good practice to hard code field names for reusability
@@ -87,7 +94,7 @@ const (
 
 func main() {
     err := func1()
-    logger.Error("resource access operation failed", deepstack.ErrorField, err)
+    logger.Error(err)
 }
 
 // intermediate function passing up the error
@@ -120,23 +127,29 @@ func func3() error {
 }
 ```
 
-Output:
+The console handler prints the structured fields and, for DeepStack errors, the stack trace. Exact file paths and line numbers depend on where the example is run.
+
+Example output:
 
 ```text
 main.func3
-    /home/user/GolandProjects/playground/main.go:42
+    /path/to/project/main.go:42
 main.func2
-    /home/user/GolandProjects/playground/main.go:33
+    /path/to/project/main.go:33
 main.func1
-    /home/user/GolandProjects/playground/main.go:23
+    /path/to/project/main.go:23
 main.main
-    /home/user/GolandProjects/playground/main.go:17
+    /path/to/project/main.go:17
 runtime.main
-    /home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.4.linux-amd64/src/runtime/proc.go:283
+    /path/to/go/src/runtime/proc.go:283
 runtime.goexit
-    /home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.4.linux-amd64/src/runtime/asm_amd64.s:1700
+    /path/to/go/src/runtime/asm_amd64.s:1700
 
-2025-08-31 16:53:38.022 ERROR main.go:18 "resource access operation failed" error_cause="access token not found" access_denied="access token not found"
+2026-05-15 12:00:00.000 ERROR main.go:18 "access token not found" access_denied="no access token provided"
+main.func3
+    /path/to/main.go:...
+main.func2
+    /path/to/main.go:...
 ```
 
 ### Asserting DeepStack Errors in Tests
@@ -152,7 +165,7 @@ func TestStuff(t *testing.T) {
 
 ### Register New Log Handlers
 
-Log handlers can be registered via `NewDeepStackLogger()` to write logs to console or files, or sending them to a log database. This package provides a default console handler, but you can integrate your own implementations as well.
+Pass one or more `log/slog` handlers to `NewDeepStackLogger()` to choose where logs go. The package provides `NewRawConsoleHandler` and `NewJsonConsoleHandler`, and both write to standard output. You can also pass handlers for files, databases, or other destinations by using your own `slog.Handler` implementations.
 
 ### Contributing
 
